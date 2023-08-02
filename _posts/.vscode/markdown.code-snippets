@@ -1,0 +1,22 @@
+{
+	"Jekyll Post Front Matter": {
+		"prefix": "post",
+		"body": [
+		  "---",
+		  "layout: post #ensure this one stays like this",
+		  "read_time: true # calculate and show read time based on number of words",
+		  "show_date: true # show the date of the post",
+		  "title: $1",
+		  "date:  $2 # XXXX-XX-XX XX:XX:XX XXXX",
+		  "description: $3 ",
+		  "img: # the path for the hero image, from the image folder (if the image is directly on the image folder, just the filename is needed)",
+		  "tags: [$4]",
+		  "author: BreejojoDe",
+		  "github: username/reponame/ # set this to show a github button on the post",
+		  "toc: yes # leave empty or erase for no table of contents",
+		  "---",
+		  "$0"
+		],
+		"description": "Insert Jekyll post front matter"
+	  }
+}

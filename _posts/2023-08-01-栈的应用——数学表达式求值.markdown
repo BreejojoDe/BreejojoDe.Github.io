@@ -1,0 +1,154 @@
+---
+layout: post #ensure this one stays like this
+read_time: true # calculate and show read time based on number of words
+show_date: true # show the date of the post
+title:  栈的应用 —— 数学表达式求值
+date:   2023-8-1 # XXXX-XX-XX XX:XX:XX XXXX
+description: "数据结构——栈"
+img: posts/20230801/code.png # the path for the hero image, from the image folder (if the image is directly on the image folder, just the filename is needed)
+tags: [数据结构, 栈]
+author: BreejojoDe
+github: username/reponame/ # set this to show a github button on the post
+toc: yes # leave empty or erase for no table of contents
+---
+
+## 栈的应用 —— 数学表达式求值
+最近在看《大话数据结构》，这本书确实有很多可圈可点之处，但在栈的应用中数学表达式求值确实令人费解。书中对原理阐述不足。关键之处是来理解好中缀转后缀，后缀表达式计算的原理。大前天一直在尝试自己复现一份代码，但发现解决问题和课本上的学习真的有极大不同。  
+
+### 数据结构选择
+很明显后进先出（LIFO, First In Last Out）这种结构适合处理，因此肯定会用到栈。但不管是C or Cpp，栈都是通过struct/class实现的。对于强类型语言，自己实现栈是要规定好data类型，但是把data规定好用union来实现，就可以实现同一个push和pop函数既可以对字符处理也可以对数字处理。 
+
+但是在应用到data变量时，还需要代码中人为规定最后实现的类型，这和不用union也没什么不同了。  
+（解释一下，假设union Data里有int、double、char，一个struct Data_ 里有union Data 和int type两个数据，其中type用来描述Data所储存的数据类型。那么假设现在有一个需要Data的数据相加的要求，我们写了ans（struct Data_）这个函数来抽象得到数据这一过程。那么ans这个方法在C中必须有一个明确的int，double或char返回类型。如果也采用返回union Data的话，在在ans外对Data的访问也需要明确指出是.i, .d, 还是.c，这和我们只想得到int或double的数的要求不符合，因为我们在编写代码时也不知道Data类型，只是需要返回值而已。）  
+所以在数据的储存上，在分割字符串完成后可以全部用double储存数字，没有int和double冲突的烦恼。
+
+> ----
+> 最近刚开始学习C++，虽然有C的基础但C++还是让我很惊叹。尤其对iostream里的cin、cout可以实现智能判断数据类型，也体验了函数重载，甚至听说诸如泛型、模板此类。或许C++可以实现识别不同数据类型。  
+>
+> 当然在查阅文档时发现C++有stack这一对象，似乎可以直接调用push和pop。  
+> 这里为了练习，暂时用C语言自己实现Stack。当然数据必须写数字(int，用来存操作数)和字符(char，用来存运算符)，相应地，代码肉眼可见的冗杂起来，或许在写好后会将它放入头文件当中。  
+> 
+> ----
+<br>
+选择链栈实现过程中的储存。但中缀表达式和后缀表达式呢？C中只能用字符数组储存了，python中的列表倒是可以储存不同类型数据，可惜用不得，或许如果C语言能识别传参类型的话，可以手动用指针动态数组来实现一个类似列表的数组。
+<br>
+
+### 后缀表达式
+顾名思义，后缀表达式（逆波兰表示）就是**运算符在操作数后边的表达式**，但是在叠加时运算规则是先找符号，每个符号都计算它前面的两个数字，所以可以用栈储存它的数字部分，每次遇到运算符，就先弹出两个栈的数字运算，运算结果进栈用来等待下一次运算。(这和后边的中缀转后缀的规则有关)。  
+*attention:后缀表达式找运算符的顺序是从左到右*  
+  
+用double类型的栈储存操作数，每次遇见一个操作符就弹出两个操作数，其中用`alof`把str转变成double
+
+    for(int i=0; i<=suffix->top; i++) {
+        if( isdigit(suffix->array[i]) || suffix->array[i] == '.' ) {
+            temp_operand[temp_operand_index++] = suffix->array[i];
+        } else if (temp_operand_index>0) {
+            temp_operand[temp_operand_index] = '\0';
+            push_double(&num_stack,atof(temp_operand));
+            temp_operand_index = 0;
+        }
+
+        if( is_op(suffix->array[i]) ) {
+            temp2 = pop_double(&num_stack);
+            temp1 = pop_double(&num_stack);
+            push_double(&num_stack, calculate(temp1, temp2, suffix->array[i]));
+        }
+    }
+
+### 中缀转后缀
+很久没认真搓过C，一上来很多C的惯用法和编程思路都停滞了，导致实现这个字符串处理成了最大的困难（其实也不太困难）。
+
+> 插一句，chatgpt在处理C语言这样严格面向过程的语言上，能力还是有很多不足，意见仅能参考且只能参考。有报错还是直接geogle来的好些。当然chatgpt还是有一定效率在的。
+>
+
+#### dynamic array
+用char*做了个数组，为了避免表达式过长读不进来，用C动态分配了一个char数组  
+
+    typedef struct dynamic_array_char {
+        char* array;
+        int top;
+        int capacity;
+    } Array;
+
+本来想用top表示结尾，但是一想C的结尾 '\0' 足矣。  
+
+    Status array_init(Array* ptr_array) // 初始化
+    {
+        ptr_array->array = (char*)malloc(sizeof(char) * 100);
+        memset(ptr_array->array, 0, sizeof(char) * 100);
+        ptr_array->capacity = 100;
+        ptr_array->top = -1;
+    }
+
+    Status array_enlarge(Array* ptr_array) //动态增加
+    {
+        ptr_array->capacity *= 2;
+        ptr_array->array = (char*)realloc(ptr_array->array, sizeof(char) * ptr_array->capacity);
+        memset(&(ptr_array->array[ptr_array->capacity/2]), 0, sizeof(char) * (ptr_array->capacity / 2) );
+    }
+
+#### realloc
+这里引用一段CSDN上hackerain的关于realloc的资料：
+> realloc(void *__ptr, size_t __size)：更改已经配置的内存空间，即更改由malloc()函数分配的内存空间的大小。  
+> 
+>如果将分配的内存减少，realloc仅仅是改变索引的信息。
+>
+>如果是将分配的内存扩大，则有以下情况：
+>1. 如果当前内存段后面有需要的内存空间，则直接扩展这段内存空间，realloc()将返回原指针。
+>2. 如果当前内存段后面的空闲字节不够，那么就使用堆中的第一个能够满足这一要求的内存块，将目前的数据复制到新的位置，并将原来的数据块释放掉，返回新的内存块位置。
+>3. 如果申请失败，将返回NULL，此时，原来的指针仍然有效。 
+
+>注意：如果调用成功，不管当前内存段后面的空闲空间是否满足要求，都会释放掉原来的指针，重新返回一个指针，虽然返回的指针有可能和原来的指针一样，即不能再次释放掉原来的指针。
+
+----
+中缀转后缀的关键思想在后缀是根据符号来找操作数，所以保证最高优先级的运算符在后缀表达式中的前两个数是它对应的操作数（1 2 + ，这可以算操作数3），所以用栈来让每个高优先级的符号都得以输出，这里可以设计一个优先级表
+    
+    int priority(char op) 
+    {
+        if(op == '*' || op == '/') {
+            return 1;
+        } else if (op == '+' || op == '-') {
+            return 2;
+        } else if (op == '(' ) {
+            return 99;
+        } else if (op == ')') {
+            return -1;
+        } else if (op == '#') {
+            return 100;
+        }
+    }
+
+当然这里还要考虑括号。括号内的所有运算符都要输出，也就是遇到左括号要压栈，遇到右括号就开始弹栈，弹到左括号为止。同时在数字和符号之间用空格隔开  
+
+    if (infix->array[i] == '(') {
+        push_char(&op_stack, infix->array[i]);
+    } else if (infix->array[i] == ')') {
+        while (show_top_char(&op_stack) != '(' && op_stack.count > 0) {
+            printf("pop:%c  stack count:%d\n", op_stack.top->data, op_stack.count-1);
+            suffix->array[++(suffix->top)] = pop_char(&op_stack);
+            suffix->array[++(suffix->top)] = ' ';
+        }
+        if (show_top_char(&op_stack) == '(') {
+            pop_char(&op_stack);
+        }
+    }
+
+值得一提的是小数点也算是一种数字里的字符，所以对数字处理时也要照顾小数点
+
+    printf("dispose:%c\n", infix->array[i]);
+        if (isdigit(infix->array[i]) || infix->array[i] == '.') {
+            temp_operand[temp_operand_index++] = infix->array[i];
+        } else if (temp_operand_index > 0) {
+            temp_operand[temp_operand_index] = '\0';
+            for (int j = 0; j < temp_operand_index; j++) {
+                suffix->array[++(suffix->top)] = temp_operand[j];
+            }
+            suffix->array[++(suffix->top)] = ' ';  // add space after a number
+            temp_operand_index = 0;
+        }
+
+处理顺序中，把数字单独拿出来用temp_operand单独处理，if...else...让有数字时读数字，没数字时把缓存的数字输出，这样不影响后边处理。  
+**采用处理数字->处理括号->处理符号->最后的数字处理->弹出剩下的栈元素**这个顺序。  
+<br>
+当然实现过程中出现了很多bug，比如用的结构体没有初始化，符号处理顺序也斟酌了很久。最后还要再弹出栈中剩下的元素，还有中缀表达式最后一个元素是数字时，只会存到temp_operand中，没有下一次循环来输出。所以最后的边界也要优化。pop时忘记设置count--，等等等等，错误百出，调了一整天只完成了80行。  
+相对的，用printf来打印信息从而判断程序是否正确运行，在没太多递归时还可以提高检查效率。
