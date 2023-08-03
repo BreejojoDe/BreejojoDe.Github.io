@@ -6,7 +6,7 @@ title:  栈的应用 —— 数学表达式求值
 date:   2023-8-1 # XXXX-XX-XX XX:XX:XX XXXX
 description: "数据结构——栈"
 img: posts/20230801/code.png # the path for the hero image, from the image folder (if the image is directly on the image folder, just the filename is needed)
-tags: [数据结构, 栈]
+tags: [数据结构, 栈, C]
 author: BreejojoDe
 github: username/reponame/ # set this to show a github button on the post
 toc: yes # leave empty or erase for no table of contents
