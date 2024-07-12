@@ -57,7 +57,7 @@ function(arguments) over (partition by ...
 平衡二叉树实现，
 - 叶节点：存储数组的原始元素。
 - 内部节点：存储其子树包含的数据的聚合信息（如和、最小值、最大值等），而不存储原始数据。  
-![alt text](./assets/img/posts/20240712/image-1.png)
+![alt text](./assets/img/posts/20240709/image-1.png)
 
 *Q：线段树和B+树在索引上有什么区别*
 <br>  
@@ -77,7 +77,7 @@ function(arguments) over (partition by ...
 **分数级联 Fractional Cascading**：  
 引入哨兵值来对多段数据进行排序，可以从一个数据段德哨兵值和指针跳转到另一个数据段的对应位置，理论上可以将k*n的复杂度变为k+n。  
 
-![alt text](./assets/img/posts/20240712/image.png)  
+![alt text](./assets/img/posts/20240709/image.png)  
 
 ### 3.2 评估
 
@@ -101,32 +101,32 @@ function(arguments) over (partition by ...
 ### 4.2 窗口化 COUNT DISTINCT 操作
 
 构建一个前置位置标记的数组，储存对应的元素的上一次出现的index，如图所示
-![alt text](./assets/img/posts/20240712/image-2.png)  
+![alt text](./assets/img/posts/20240709/image-2.png)  
 
 对于窗口内的元素的前置索引，有两种情况，
 - 在窗口内，证明这个元素在窗口内出现过，是重复的
 - 不在窗口内，证明是窗口内第一次出现  
 
 论文的算法实现：
-![alt text](./assets/img/posts/20240712/image-3.png)  
+![alt text](./assets/img/posts/20240709/image-3.png)  
 *Q：这里返回的prevIdes的顺序是sorted数组排序之后的顺序，这个顺序与之前原数据的顺序并不一致，也就是说，in[i]的前置标记不是prevIdes[i]，是否需要对算法返回的prevIdes重新按sorted.secend排序一次？*  
 
 直接使用这个方法的问题就是每次需要吧窗口内的元素一一对比，复杂度为n，要对比所有窗口，时间复杂度$O(n^2)$，因此进行改进。  
 
 不直接检查，而是排序后检查，但是要保留preIdes的原顺序，所以采用MST的结构，留存中间每段的归并结果，这样可以根据区间找到已有的归并段，归并段是有序的，不需要一一对比，段内使用二分查找，这样就把层内的查找时间降低为$log n$，但注意这只是单层的。   
-![alt text](./assets/img/posts/20240712/image-4.png)  
+![alt text](./assets/img/posts/20240709/image-4.png)  
 
 这时的查找还只是加入MST，我们在应用时还需要对查找段分割，这是一个查找“归并段”的过程，最暴力的就是逐层扫描，一共 log n 层，得到的单次窗口查询的复杂度是$O((logn)^2)$，则总的复杂度就是$O(n(logn)^2)$。这是查询的复杂度，构建的复杂度是$O(nlogn)$，所以需要继续优化查询过程。  
 
 在对一层进行扫描时，如果进入的不是最终需要的归并段，那么就进入扫描中断处对应的下一层的扫描段进行扫描，或者说只在第一层扫描但是找的对应归并段需要一个flag指引，这个flag可以为每个元素拥有，它指向他在下一级的各个归并段最贴近的位置，这就是加入Fractional Cascading的归并树  
-![alt text](./assets/img/posts/20240712/image-5.png)  
-![alt text](./assets/img/posts/20240712/image-6.png)  
+![alt text](./assets/img/posts/20240709/image-5.png)  
+![alt text](./assets/img/posts/20240709/image-6.png)  
 *Q in reading：这里并没有给出一个明确的实施方法，如何构建这个flag，就是文里所说的注释，以及如何查找，但所说的办法逻辑上确实成立*  
 
 
 ### 4.3 SUM DISTINCT
 维护一个“注释”，对于每个元素i，注释就是在该归并段内的前i个元素的和，因为归并段有序，所以第i个元素及之前都是小于等于i元素值，第i个元素之后都是大于i元素值，可以做到选取前i个不重复的值的和这一操作。
-![alt text](./assets/img/posts/20240712/image-7.png)  
+![alt text](./assets/img/posts/20240709/image-7.png)  
 
 使用 Fractional Cascading 使找到所有归并段花费$logn$，而最多需要合并归并段$logn$，则单个窗口结果为$O(logn)$，于是总共需要$O(nlogn)$。  
 
@@ -149,12 +149,12 @@ DENSE_RANK无法使用，会导致三维查询，需要用范围树
 百分数和值函数都是选择第i个最小值，相当于查询窗口里的某个具体位置的值，最原始的思维是排序后选择第i个，至于是否在窗口里，通过排序时保留位置信息，位置在窗口内就统计。  
   
 这样的方法获得的是遍历排序后的数组才能获得结果，复杂度$O(n)$，整体聚合就是$O(n^2)$  
-![alt text](./assets/img/posts/20240712/image-8.png)  
+![alt text](./assets/img/posts/20240709/image-8.png)  
   
 改进是用MST来搜索，把排序后的位置索引作为MST的最底层，然后构建MST，从上向下搜索，搜索到最底层的时候就能获得真实排名，搜索原则在论文中是这样：**In case the number of qualifying elements in the left sublist is smaller than the searched element, we descend to the left,
 otherwise to the right.** 这里的searched element意义难以明确，但思维可以理解。  
 思想就是查找每个部分的的左归并段，如果找到的数量大于等于i，说明就在left里，否则，在right里；同时每向下一层就可以实时更新这个 $i$，如果查找left，i不变，查找right，i就变，这样查找到最底下就是我们要的数据的index。具体如图。  
-![alt text](./assets/img/posts/20240712/image-9.png)  
+![alt text](./assets/img/posts/20240709/image-9.png)  
 
 不同于COUNT只有一个边界（因为COUNT构造的前置索引数组的单调性），这里的排序后的索引归并段，需要一前一后两个边界（即查找的窗口的前后界），于是对每一层我们查找的有序的归并段，都需要两次二分查找，这样就需要单层的$O(logn)$，一个树的搜索就是$O((logn)^2)$，这样得到的整体聚合复杂度还是$O(n(logn)^2)$。  
 
@@ -193,7 +193,7 @@ otherwise to the right.** 这里的searched element意义难以明确，但思�
 MST置于内存（可磁盘），每级使用一个数组保存  
 
 对RANK的初始排序数组的储存，储存其排序顺序，如图  
-![alt text](./assets/img/posts/20240712/image-10.png)  
+![alt text](./assets/img/posts/20240709/image-10.png)  
   
 根据输入数据大小动态调整储存数据类型  
 
